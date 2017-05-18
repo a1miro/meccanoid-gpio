@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import numpy as np
 
 usleep = lambda x: time.sleep(x/1000000.0)
 
@@ -9,9 +10,9 @@ class MeccaBrain(object):
 
     def __init__(self, pin):
         self._pin = pin
+        self._output = np.uint8([0xFF,0xFF,0xFF,0xFF]) 
+        self._input = np.uint8([0xFF,0xFF,0xFF,0xFF])
         self._modulenum = 0
-        self._output = bytearray(4)
-        self._input = bytearray(4)
         
         # Set GPIO mode to RPi I/O mapping
         GPIO.setmode(GPIO.BOARD)
@@ -24,7 +25,7 @@ class MeccaBrain(object):
 
 
     def color(self, servo, color):
-        self._output[servo] = color
+        self._output[servo] = np.uint8(color)
     
 
     def communicate(self):
@@ -53,17 +54,17 @@ class MeccaBrain(object):
         reply end
 
         '''
-        self._send(0xFF)     # Send header
+        self._send(np.uint8(0xFF))     # Send header
 
         for b in self._output:
             self._send(b)
 
-        checksum = self._checksum(
+        checksum = np.uint8(self._checksum(
                 self._output[0], 
                 self._output[1], 
                 self._output[2], 
                 self._output[3]
-                )
+                ))
 
         self._send(checksum)  # Sending checksum
         return self._receive()
@@ -79,7 +80,7 @@ class MeccaBrain(object):
         usleep(MeccaBrain.BIT_DELAY_USEC)
 
         for b in range(0,8):
-            mask = 1 << b;
+            mask = np.uint8(1 << b)
             if (data & mask):
                 GPIO.output(self._pin, GPIO.HIGH)
             else:
@@ -95,18 +96,17 @@ class MeccaBrain(object):
         usleep(MeccaBrain.BIT_DELAY_USEC)
 
     def _receive(self):
-        data = 0
+        data = np.uint8(0)
         GPIO.setup(self._pin, GPIO.IN)
 
         # TODO: Why so long time 1.5?
         time.sleep(0.5)
 
         for b in range(0,8):
-            mask = 1 << b;
+            mask = np.uint8(1 << b)
 
             if GPIO.input(self._pin) == GPIO.HIGH:
-                pass
-                data |= 1 << b;
+                data |= mask;
 
             usleep(MeccaBrain.READ_BIT_DELAY_USEC)
 
@@ -118,13 +118,13 @@ class MeccaBrain(object):
         CS = CS + (CS << 4)                # left shift 4 places
         CS = CS & 0xF0
         CS = CS | self._modulenum
-        return CS
+        return np.uint8(CS)
 
 
 
 if __name__ == "__main__":
     mecca = MeccaBrain(21)
-    colors = [ 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0]
+    colors = np.uint8([ 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0])
     for c in colors:
         mecca.color(1,c)
         r = mecca.communicate()
