@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import numpy as np
 
 usleep = lambda x: time.sleep(x/1000000.0)
 
@@ -9,14 +10,20 @@ class MeccaBrain(object):
 
     def __init__(self, pin):
         self._pin = pin
+        self._output = np.uint8([0xFF,0xFF,0xFF,0xFF]) 
+        self._input = np.uint8([0xFF,0xFF,0xFF,0xFF])
+        self._module_type = ["_", "_", "_", "_"]
         self._modulenum = 0
-        self._output = bytearray(4)
-        self._input = bytearray(4)
-        
+
         # Set GPIO mode to RPi I/O mapping
-        GPIO.setmode(GPIO.BOARD)
+        GPIO.setmode(GPIO.BCM)
         # Configure output pin
         GPIO.setup(self._pin, GPIO.OUT)
+
+
+    def __del__(self):
+        print("+++ dtor")
+        GPIO.cleanup()
 
     @property
     def pin(self):
@@ -24,8 +31,11 @@ class MeccaBrain(object):
 
 
     def color(self, servo, color):
-        self._output[servo] = color
-    
+        self._output[servo] = np.uint8(color)
+
+    def led_color(self, red, gree, blue, fadetime):
+        pass
+        
 
     def communicate(self):
         '''
@@ -53,23 +63,26 @@ class MeccaBrain(object):
         reply end
 
         '''
-        self._send(0xFF)     # Send header
-
-        for b in self._output:
-            self._send(b)
-
-        checksum = self._checksum(
+        checksum = np.uint8(self._checksum(
                 self._output[0], 
                 self._output[1], 
                 self._output[2], 
                 self._output[3]
-                )
+                ))
 
+        print("checksum = 0x%02X" % checksum)
+
+        # Sending data 
+        self._send(np.uint8(0xFF))     # Send header
+
+        for b in self._output:
+            self._send(b)
+       
         self._send(checksum)  # Sending checksum
+        
         return self._receive()
 
-
-
+   
     def _send(self, data):
 
         GPIO.setup(self._pin, GPIO.OUT)
@@ -77,39 +90,48 @@ class MeccaBrain(object):
         # Start bit, 417 usec LOW
         GPIO.output(self._pin, GPIO.LOW)
         usleep(MeccaBrain.BIT_DELAY_USEC)
-
+        
         for b in range(0,8):
-            mask = 1 << b;
-            if (data & mask):
+            mask = np.uint8(1 << b)
+            if data & mask:
                 GPIO.output(self._pin, GPIO.HIGH)
             else:
                 GPIO.output(self._pin, GPIO.LOW)
             usleep(MeccaBrain.BIT_DELAY_USEC)
 
         # Stop bit - HIGH 
-        GPIO.output(self._pin, GPIO.LOW)
+        GPIO.output(self._pin, GPIO.HIGH)
         usleep(MeccaBrain.BIT_DELAY_USEC)
 
         # Stop bit - HIGH 
-        GPIO.output(self._pin, GPIO.LOW)
+        GPIO.output(self._pin, GPIO.HIGH)
         usleep(MeccaBrain.BIT_DELAY_USEC)
 
+    def _myinput(self, pin):
+        s = GPIO.LOW
+        pulse = 0
+        for t in range(0,100):
+            s = GPIO.input(self._pin)
+            if s == GPIO.LOW:
+                break
+            pulse += 100
+            usleep(25) 
+        return pulse 
+
     def _receive(self):
-        data = 0
+        data = np.uint8(0)
         GPIO.setup(self._pin, GPIO.IN)
 
         # TODO: Why so long time 1.5?
-        time.sleep(0.5)
+        #usleep(MeccaBrain.READ_BIT_DELAY_USEC)
+        usleep(1.5)
 
         for b in range(0,8):
-            mask = 1 << b;
-
-            if GPIO.input(self._pin) == GPIO.HIGH:
-                pass
-                data |= 1 << b;
-
-            usleep(MeccaBrain.READ_BIT_DELAY_USEC)
-
+            mask = np.uint8(1 << b)
+            #usleep(MeccaBrain.BIT_DELAY_USEC)
+            if self._myinput(self._pin) > 400:
+                data |= mask;
+        #usleep(MeccaBrain.READ_BIT_DELAY_USEC)
         return data
 
     def _checksum(self, data1, data2, data3, data4):
@@ -118,16 +140,76 @@ class MeccaBrain(object):
         CS = CS + (CS << 4)                # left shift 4 places
         CS = CS & 0xF0
         CS = CS | self._modulenum
-        return CS
+        return np.uint8(CS)
 
 
 
 if __name__ == "__main__":
+    colors = np.uint8([ 0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70])
+    #colors = np.uint8([0xF1, 0xF2, 0xF3, 0xF4, 0xF5])
     mecca = MeccaBrain(21)
-    colors = [ 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0]
+    '''
+    print("modulenum = %d" % mecca._modulenum)
+    mecca.color(0,0xFE)
+    mecca.color(1,0xFE)
+    mecca.color(2,0xFE)
+    mecca.color(3,0xFE)
+
+    r = mecca.communicate()
+    print("returned r = 0x%02X" % r)
+
+
+    mecca._modulenum = 1
+    print("modulenum = %d" % mecca._modulenum)
+    mecca.color(0,0xFE)
+    mecca.color(1,0xFE)
+    mecca.color(2,0xFE)
+    mecca.color(3,0xFE)
+
+    r = mecca.communicate()
+    print("returned r = 0x%02X" % r)
+
+
+    mecca._modulenum = 2
+    print("modulenum = %d" % mecca._modulenum)
+    mecca.color(0,0xFE)
+    mecca.color(1,0xFE)
+    mecca.color(2,0xFE)
+    mecca.color(3,0xFE)
+
+    r = mecca.communicate()
+    print("returned r = 0x%02X" % r)
+
+    mecca._modulenum = 3
+    print("modulenum = %d" % mecca._modulenum)
+    mecca.color(0,0xFE)
+    mecca.color(1,0xFE)
+    mecca.color(2,0xFE)
+    mecca.color(3,0xFE)
+
+    r = mecca.communicate()
+    print("returned r = 0x%02X" % r)
+    '''
+
+    r = mecca.communicate()
+    print("init return = 0x%02X" % r)
     for c in colors:
+        print("changing color to 0x%02X" % c)
+        mecca.color(0,c)
+        r = mecca.communicate()
+        print("id = %d, return = 0x%02X" % (0,r))
+        
         mecca.color(1,c)
         r = mecca.communicate()
-        print("return = %d" % r)
+        print("id = %d, return = 0x%02X" % (1,r))
+
+        mecca.color(2,c)
+        r = mecca.communicate()
+        print("id = %d, return = 0x%02X" % (2,r))
+
+        mecca.color(3,c)
+        r = mecca.communicate()
+        print("id = %d, return = 0x%02X" % (3,r))
+
         time.sleep(1)
 
