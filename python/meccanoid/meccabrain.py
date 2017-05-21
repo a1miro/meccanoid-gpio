@@ -12,6 +12,7 @@ class MeccaBrain(object):
         self._pin = pin
         self._output = np.uint8([0xFF,0xFF,0xFF,0xFF]) 
         self._input = np.uint8([0xFF,0xFF,0xFF,0xFF])
+
         self._module_type = ["_", "_", "_", "_"]
         self._modulenum = 0
 
@@ -32,10 +33,7 @@ class MeccaBrain(object):
 
     def color(self, servo, color):
         self._output[servo] = np.uint8(color)
-
-    def led_color(self, red, gree, blue, fadetime):
-        pass
-        
+   
 
     def communicate(self):
         '''
@@ -93,6 +91,7 @@ class MeccaBrain(object):
         
         for b in range(0,8):
             mask = np.uint8(1 << b)
+
             if data & mask:
                 GPIO.output(self._pin, GPIO.HIGH)
             else:
@@ -132,6 +131,7 @@ class MeccaBrain(object):
             if self._myinput(self._pin) > 400:
                 data |= mask;
         #usleep(MeccaBrain.READ_BIT_DELAY_USEC)
+
         return data
 
     def _checksum(self, data1, data2, data3, data4):
