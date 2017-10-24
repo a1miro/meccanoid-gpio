@@ -1,5 +1,6 @@
 *.swp
 cmake
 build
-MakeCache.txt
+CMakeCache.txt
 CMakeFiles
+
