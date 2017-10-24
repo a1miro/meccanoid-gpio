@@ -7,3 +7,6 @@ At first stage I will add raspberryPi, as planned, then one of the x86 boards.
 I've also renamed the project from meccanoid-rspi to meccanoid-gpio.
 Sign up for this product progress.
 
+
+Useful links:
+http://brianmilco.blogspot.co.uk/2012/11/cmake-automatically-use-git-tags-as.html

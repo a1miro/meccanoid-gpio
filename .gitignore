@@ -3,4 +3,8 @@ cmake
 build
 CMakeCache.txt
 CMakeFiles
+Makefile
+cmake_install.cmake
+version.cpp
+
 

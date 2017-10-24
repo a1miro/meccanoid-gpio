@@ -1,4 +1,4 @@
-cmake_minimum_required (2.6)
+cmake_minimum_required (VERSION 2.6)
 project (meccanoid)
 
 
@@ -7,6 +7,8 @@ project (meccanoid)
 #
 include(GetGitRevisionDescription)
 git_describe(VERSION --tags --dirty=-dirty)
+
+set(CMAKE_CXX_FLAGS "-std=c++14 -I/usr/include/x86_64-linux-gnu/qt5/QTCore")
 
 #parse the version information into pieces.
 string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" VERSION_MAJOR "${VERSION}")
