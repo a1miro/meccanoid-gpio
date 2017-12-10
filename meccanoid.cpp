@@ -1,10 +1,10 @@
 #include<iostream>
-#include"version"
+#include"version.h"
 
 int main()
 {
     using std::cout;
     using std::endl;
 
-    cout << "version:" << gGIT_VERSION;
+    cout << "GIT_VERSION = " << VERSION << endl;
 }
